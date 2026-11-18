@@ -1,0 +1,37 @@
+name: Build Davolink DV01 QWAIRAH
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build OpenWrt for Davolink DV01
+        run: |
+          sudo apt-get update && sudo apt-get install -y build-essential clang flex bison gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync unzip zlib1g-dev file wget curl jq
+          git clone --branch openwrt-23.05 --depth 1 https://github.com/openwrt/openwrt.git openwrt
+          cd openwrt && ./scripts/feeds update -a && ./scripts/feeds install -a
+          cat << 'CONF' > .config
+          CONFIG_TARGET_ipq40xx=y
+          CONFIG_TARGET_ipq40xx_generic=y
+          CONFIG_TARGET_ipq40xx_generic_DEVICE_davolink_dv01-901h=y
+          CONFIG_PACKAGE_luci=y
+          CONFIG_PACKAGE_luci-base=y
+          CONFIG_PACKAGE_luci-mod-admin-full=y
+          CONFIG_PACKAGE_luci-theme-bootstrap=y
+          CONFIG_PACKAGE_luci-i18n-base-ar=y
+          CONFIG_PACKAGE_luci-app-ttyd=y
+          CONFIG_PACKAGE_luci-app-watchcat=y
+          CONFIG_PACKAGE_luci-app-nlbwmon=y
+          CONFIG_PACKAGE_luci-app-lldpd=y
+          CONFIG_PACKAGE_lldpd=y
+          CONFIG_PACKAGE_wpad-basic-openssl=y
+          CONFIG_PACKAGE_curl=y
+          CONFIG_PACKAGE_jq=y
+          CONF
+          make defconfig && cp -r ../files ./files && make -j$(nproc)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QWAIRAH-Davolink-DV01
+          path: |
+            openwrt/bin/targets/ipq40xx/generic/*sysupgrade.bin
+            openwrt/bin/targets/ipq40xx/generic/*kernel.bin
